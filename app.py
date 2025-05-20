@@ -20,8 +20,11 @@ def find_bos(df):
     # Detect Break of Structure: Higher Highs and Lower Lows
     df["HH"] = df["High"] > df["High"].shift(1)
     df["LL"] = df["Low"] < df["Low"].shift(1)
-    df["BOS"] = np.where((df["HH"] & (df["High"] > df["High"].shift(2))) | 
-                         (df["LL"] & (df["Low"] < df["Low"].shift(2))), True, False)
+
+    hh_bos = (df["HH"]) & (df["High"] > df["High"].shift(2))
+    ll_bos = (df["LL"]) & (df["Low"] < df["Low"].shift(2))
+
+    df["BOS"] = hh_bos | ll_bos
     return df
 
 def detect_fvg(df):
