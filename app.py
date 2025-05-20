@@ -92,7 +92,20 @@ def generate_signals(df):
     df["FVG"] = df["FVG"].astype(bool)
 
     df["Signal"] = np.where((df["BOS"] & df["FVG"]), "BUY", None) # None will make dtype object
-    df["TP"] = np.where(df["Signal"] == "BUY", df["High"] + (df["High"] - df["Low"])*1.5, np.nan) # Use np.nan for float column
+    
+    # Calculate TP values using underlying NumPy arrays to ensure 1D operations
+    # Condition for BUY signal
+    buy_condition_arr = (df["Signal"].values == "BUY") # Results in a 1D boolean NumPy array
+    
+    # Values if condition is True
+    # Ensure High and Low are treated as 1D NumPy arrays
+    high_arr = df["High"].values
+    low_arr = df["Low"].values
+    tp_values_if_buy_arr = high_arr + (high_arr - low_arr) * 1.5 # Results in a 1D float NumPy array
+    
+    # Assign using np.where with NumPy arrays; result should be a 1D NumPy array
+    df["TP"] = np.where(buy_condition_arr, tp_values_if_buy_arr, np.nan)
+    
     df["TP"] = df["TP"].astype(float) # Ensure TP is float
     return df
 
