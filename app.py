@@ -19,21 +19,32 @@ def get_data(symbol, period="6mo", interval="1h"):
     return df
 
 def find_bos(df):
-    # Detect Break of Structure: Higher Highs and Lower Lows
+    # Initialize BOS column with False, ensuring it's aligned with df's index from the start
+    df["BOS"] = pd.Series(False, index=df.index, dtype=bool)
+
     if len(df) < 3: # Not enough data for meaningful shift(2)
-        df["BOS"] = pd.Series([False] * len(df), index=df.index, dtype=bool)
-        return df
+        return df # BOS is already all False, and correctly indexed
 
-    df["HH"] = df["High"] > df["High"].shift(1)
-    df["LL"] = df["Low"] < df["Low"].shift(1)
-
-    hh_bos_series = (df["HH"]) & (df["High"] > df["High"].shift(2))
-    ll_bos_series = (df["LL"]) & (df["Low"] < df["Low"].shift(2))
-
-    # Explicitly reindex to ensure alignment and handle potential length mismatches.
-    # Fill with False as the original logic implies False for initial uncalculable rows.
-    combined_bos_series = hh_bos_series | ll_bos_series
-    df["BOS"] = combined_bos_series.reindex(df.index, fill_value=False).astype(bool)
+    # Use .loc to assign to avoid potential SettingWithCopyWarning and ensure view/copy semantics are clear
+    # Calculate conditions directly. NaNs from shifts will be handled by fillna(False).
+    high = df["High"]
+    low = df["Low"]
+    
+    # Condition for Higher High Break of Structure
+    # Current high is greater than previous high, AND current high is greater than high two periods ago
+    cond_hh_bos = (high > high.shift(1)) & (high > high.shift(2))
+    
+    # Condition for Lower Low Break of Structure
+    # Current low is less than previous low, AND current low is less than low two periods ago
+    cond_ll_bos = (low < low.shift(1)) & (low < low.shift(2))
+    
+    # Combine conditions. fillna(False) handles NaNs from shifts, ensuring they don't break the OR logic.
+    # The resulting series 'combined_conditions' will be aligned with df.index.
+    combined_conditions = cond_hh_bos.fillna(False) | cond_ll_bos.fillna(False)
+    
+    # Assign the boolean results to the "BOS" column.
+    # This assignment should be safe as combined_conditions is a boolean Series aligned with df.index.
+    df.loc[:, "BOS"] = combined_conditions.astype(bool)
     
     return df
 
